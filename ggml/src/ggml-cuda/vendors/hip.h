@@ -6,10 +6,6 @@
 #include <hip/hip_fp16.h>
 #include <hip/hip_bf16.h>
 
-#if defined(GGML_HIP_ROCWMMA_FATTN)
-#include <rocwmma/rocwmma-version.hpp>
-#endif // defined(GGML_HIP_ROCWMMA_FATTN)
-
 #ifdef GGML_USE_NCCL
 #include <rccl/rccl.h>
 #endif // GGML_USE_NCCL
@@ -67,6 +63,7 @@
 #define cublasSetMathMode(handle, mode) CUBLAS_STATUS_SUCCESS
 #define cublasSetStream hipblasSetStream
 #define cublasSgemm hipblasSgemm
+#define cublasSgemmBatched hipblasSgemmBatched
 #define cublasSgemmStridedBatched hipblasSgemmStridedBatched
 #define cublasStatus_t hipblasStatus_t
 #define cublasOperation_t hipblasOperation_t
@@ -79,6 +76,12 @@
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaDeviceSynchronize hipDeviceSynchronize
 #define cudaError_t hipError_t
+#ifndef cudaErrorUnknown
+#define cudaErrorUnknown hipErrorUnknown
+#endif
+#ifndef cudaErrorInvalidValue
+#define cudaErrorInvalidValue hipErrorInvalidValue
+#endif
 #define cudaErrorMemoryAllocation hipErrorOutOfMemory
 #define cudaErrorPeerAccessAlreadyEnabled hipErrorPeerAccessAlreadyEnabled
 #define cudaErrorPeerAccessNotEnabled hipErrorPeerAccessNotEnabled
@@ -96,6 +99,9 @@
 #define cudaGetDeviceProperties hipGetDeviceProperties
 #define cudaGetErrorString hipGetErrorString
 #define cudaGetLastError hipGetLastError
+#ifndef cudaPeekAtLastError
+#define cudaPeekAtLastError hipPeekAtLastError
+#endif
 #define cudaHostRegister hipHostRegister
 #define cudaHostRegisterPortable hipHostRegisterPortable
 #define cudaHostRegisterReadOnly hipHostRegisterReadOnly
@@ -119,6 +125,12 @@
 #define cudaMemGetInfo hipMemGetInfo
 #define cudaOccupancyMaxPotentialBlockSize hipOccupancyMaxPotentialBlockSize
 #define cudaSetDevice hipSetDevice
+#ifndef cudaDeviceGetStreamPriorityRange
+#define cudaDeviceGetStreamPriorityRange hipDeviceGetStreamPriorityRange
+#endif
+#ifndef cudaStreamCreateWithPriority
+#define cudaStreamCreateWithPriority hipStreamCreateWithPriority
+#endif
 #define cuDeviceGet hipDeviceGet
 #define CUdevice hipDevice_t
 #define CUdeviceptr hipDeviceptr_t

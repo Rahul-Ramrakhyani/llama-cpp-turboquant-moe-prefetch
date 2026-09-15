@@ -5,7 +5,7 @@ import os
 import sys
 import subprocess
 
-HTTPLIB_VERSION = "refs/tags/v0.47.0"
+HTTPLIB_VERSION = "refs/tags/v0.52.0"
 
 vendor = {
     "https://github.com/nlohmann/json/releases/latest/download/json.hpp":     "vendor/nlohmann/json.hpp",
@@ -21,9 +21,10 @@ vendor = {
     f"https://raw.githubusercontent.com/yhirose/cpp-httplib/{HTTPLIB_VERSION}/split.py":  "split.py",
     f"https://raw.githubusercontent.com/yhirose/cpp-httplib/{HTTPLIB_VERSION}/LICENSE":   "vendor/cpp-httplib/LICENSE",
 
-    "https://raw.githubusercontent.com/sheredom/subprocess.h/b49c56e9fe214488493021017bf3954b91c7c1f5/subprocess.h": "vendor/sheredom/subprocess.h",
+    "https://raw.githubusercontent.com/sheredom/subprocess.h/8671cee1fc09f11a70ce3782a0ee13177c3aa387/subprocess.h": "vendor/sheredom/subprocess.h",
 }
 
+<<<<<<< HEAD
 
 def _apply_wifsignaled_patch(path: str) -> None:
     """Apply the WIFSIGNALED encoding patch — without it subprocess_join
@@ -73,12 +74,36 @@ def _apply_wifsignaled_patch(path: str) -> None:
     with open(path, "w") as f:
         f.write(content)
 
+=======
+# TODO @ngxson : this is temporary, to be removed in the future
+patches = [
+    # https://github.com/sheredom/subprocess.h/pull/102
+    "vendor/sheredom/patch-bsd.patch",
+    # https://github.com/sheredom/subprocess.h/pull/101
+    "vendor/sheredom/patch-windows-quote-backslash.patch",
+    # https://github.com/sheredom/subprocess.h/pull/104
+    # note: must be applied after patch-bsd.patch, they touch adjacent lines
+    "vendor/sheredom/patch-glibc-older-than-2.29.patch",
+]
+>>>>>>> fca3093c9e6544476bbb2a139a25e17dd63627e1
 
 for url, filename in vendor.items():
     print(f"downloading {url} to {filename}") # noqa: NP100
     urllib.request.urlretrieve(url, filename)
 
+<<<<<<< HEAD
 _apply_wifsignaled_patch("vendor/sheredom/subprocess.h")
+=======
+for patch in patches:
+    print(f"applying {patch}") # noqa: NP100
+    try:
+        subprocess.check_call([
+            "git", "apply", "--directory", os.path.dirname(patch), patch
+        ])
+    except Exception as e:
+        print(f"Error: {e}") # noqa: NP100
+        sys.exit(1)
+>>>>>>> fca3093c9e6544476bbb2a139a25e17dd63627e1
 
 print("Splitting httplib.h...") # noqa: NP100
 try:

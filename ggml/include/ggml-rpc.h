@@ -6,14 +6,22 @@
 extern "C" {
 #endif
 
-#define RPC_PROTO_MAJOR_VERSION    4
+#define RPC_PROTO_MAJOR_VERSION    5
 #define RPC_PROTO_MINOR_VERSION    0
+<<<<<<< HEAD
 #define RPC_PROTO_PATCH_VERSION    2
 
 #ifdef  __cplusplus
 // 98 = upstream 97 + the fork's GGML_OP_TURBO_WHT. Bumped patch version because
 // adding an op shifts the GGML_OP enum used in the RPC wire protocol.
 static_assert(GGML_OP_COUNT == 98, "GGML_OP_COUNT has changed - update RPC_PROTO_PATCH_VERSION");
+=======
+#define RPC_PROTO_PATCH_VERSION    3
+
+#ifdef  __cplusplus
+// 102 = upstream 101 + TURBO_WHT (upstream already has LIGHTNING_INDEXER and DSV4_HC_*)
+static_assert(GGML_OP_COUNT == 102, "GGML_OP_COUNT has changed - update RPC_PROTO_PATCH_VERSION");
+>>>>>>> fca3093c9e6544476bbb2a139a25e17dd63627e1
 #endif
 
 #define GGML_RPC_MAX_SERVERS       16

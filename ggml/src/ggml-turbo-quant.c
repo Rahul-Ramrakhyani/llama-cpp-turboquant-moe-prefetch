@@ -25,7 +25,15 @@
 GGML_API void turbo_cpu_fwht_inverse(float * x, int group_size);
 
 /* Global: WHT group size for CPU quantize path (set by CPU SET_ROWS handler) */
+<<<<<<< HEAD
 GGML_API int turbo3_cpu_wht_group_size = 0;
+=======
+/* Declared with GGML_API so the symbol carries dllexport/visibility, then
+ * defined plainly: `GGML_API` now expands with `extern` on every path, and
+ * `extern int x = 0;` is rejected under -Werror (-Wextern-initializer). */
+GGML_API int turbo3_cpu_wht_group_size;
+int turbo3_cpu_wht_group_size = 0;
+>>>>>>> fca3093c9e6544476bbb2a139a25e17dd63627e1
 
 /* ---------- constants ---------- */
 
@@ -72,16 +80,29 @@ static void turbo_init_rotation(void) {
 
     const int d = TURBO_D;
 
+<<<<<<< HEAD
     /* Generate random Gaussian matrix */
     turbo_prng_seed(TURBO_SEED_ROTATION);
     float G[TURBO_D * TURBO_D];
     for (int i = 0; i < d * d; i++) {
         G[i] = (float)turbo_prng_normal();
+=======
+    /* Generate random Gaussian matrix directly into turbo_rotation.
+     * Previous code used a 64KB stack-local G[] then memcpy'd — this
+     * caused stack overflow on llama.cpp worker threads with reduced
+     * stack sizes. */
+    turbo_prng_seed(TURBO_SEED_ROTATION);
+    for (int i = 0; i < d * d; i++) {
+        turbo_rotation[i] = (float)turbo_prng_normal();
+>>>>>>> fca3093c9e6544476bbb2a139a25e17dd63627e1
     }
 
     /* QR decomposition via modified Gram-Schmidt */
     /* Q stored column-major in turbo_rotation */
+<<<<<<< HEAD
     memcpy(turbo_rotation, G, d * d * sizeof(float));
+=======
+>>>>>>> fca3093c9e6544476bbb2a139a25e17dd63627e1
 
     for (int j = 0; j < d; j++) {
         /* Normalize column j */

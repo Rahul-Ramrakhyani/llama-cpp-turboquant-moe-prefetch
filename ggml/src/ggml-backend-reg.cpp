@@ -1,6 +1,7 @@
 #include "ggml-backend-impl.h"
 #include "ggml-backend.h"
 #include "ggml-backend-dl.h"
+#include "ggml-backend-moe-cache.h"
 #include "ggml-impl.h"
 #include <algorithm>
 #include <cstring>
@@ -86,6 +87,10 @@
 #include "ggml-openvino.h"
 #endif
 
+#ifdef GGML_USE_ET
+#include "ggml-et.h"
+#endif
+
 namespace fs = std::filesystem;
 
 static std::string path_str(const fs::path & path) {
@@ -160,6 +165,9 @@ struct ggml_backend_registry {
 #endif
 #ifdef GGML_USE_OPENVINO
         register_backend(ggml_backend_openvino_reg());
+#endif
+#ifdef GGML_USE_ET
+        register_backend(ggml_backend_et_reg());
 #endif
 #ifdef GGML_USE_CPU
         register_backend(ggml_backend_cpu_reg());
@@ -270,6 +278,8 @@ struct ggml_backend_registry {
         if (!silent) {
             GGML_LOG_DEBUG("%s: unloading %s backend\n", __func__, ggml_backend_reg_name(reg));
         }
+
+        ggml_moe_cache_unregister(reg);
 
         // remove devices
         devices.erase(
