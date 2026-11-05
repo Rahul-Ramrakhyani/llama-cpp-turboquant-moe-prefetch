@@ -8,17 +8,6 @@ long-context decode speed.
 The headline: a **35B-parameter MoE (3B active, 2.68 bpw) at 85K context on a 6 GB laptop GPU
 and 14 GiB of RAM**, decoding at **36 tokens/s** and prefilling at **783 tokens/s**.
 
-<p align="center">
-  <a href="https://huggingface.co/pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf">
-    <img alt="Qwen3.6-35B-A3B 2.6763 bpw on Hugging Face"
-         src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-pjsmith%2FQwen3.6--35B--A3B--2.6763bpw-FFD21E?style=for-the-badge">
-  </a>
-  <a href="https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive">
-    <img alt="HauhauCS Aggressive IQ2_M on Hugging Face"
-         src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-HauhauCS%20Aggressive%20IQ2__M-FFD21E?style=for-the-badge">
-  </a>
-</p>
-
 ```bash
 # the whole configuration, for the impatient
 TURBO_AUTO_ASYMMETRIC=0 GGML_SCHED_PREFETCH_EXPERTS=1 ./build/bin/llama-server \
@@ -55,8 +44,8 @@ KV cache on a 6 GB card — the point was a usable agentic context window, not a
 
 | model | file | bpw | size | result |
 |---|---|---|---|---|
-| [pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf](https://huggingface.co/pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf) | `Qwen3.6-35B-A3B-12Gb-2.6763bpw.gguf` | 2.6763 | 11.6 GB | 783 t/s prefill / 36.2 t/s decode @85K |
-| [HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive](https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive) | `...-Aggressive-IQ2_M.gguf` | 2.69 | 11.7 GB | same speeds at the same depths |
+| <a href="https://huggingface.co/pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf"><img alt="pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf" src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-pjsmith%2FQwen3.6--35B--A3B--2.6763bpw-FFD21E?style=for-the-badge"></a> | `Qwen3.6-35B-A3B-12Gb-2.6763bpw.gguf` | 2.6763 | 11.6 GB | 783 t/s prefill / 36.2 t/s decode @85K |
+| <a href="https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive"><img alt="HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive" src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-HauhauCS%20Aggressive%20IQ2__M-FFD21E?style=for-the-badge"></a> | `...-Aggressive-IQ2_M.gguf` | 2.69 | 11.7 GB | same speeds at the same depths |
 
 The two models measure identically here to within run-to-run noise. Everything below applies to
 both; the numbers quoted are from the pjsmith quant because it was measured first and most often.
