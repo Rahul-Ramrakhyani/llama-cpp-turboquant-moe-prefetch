@@ -8,6 +8,17 @@ long-context decode speed.
 The headline: a **35B-parameter MoE (3B active, 2.68 bpw) at 85K context on a 6 GB laptop GPU
 and 14 GiB of RAM**, decoding at **36 tokens/s** and prefilling at **783 tokens/s**.
 
+<p align="center">
+  <a href="https://huggingface.co/pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf">
+    <img alt="Qwen3.6-35B-A3B 2.6763 bpw on Hugging Face"
+         src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-pjsmith%2FQwen3.6--35B--A3B--2.6763bpw-FFD21E?style=for-the-badge">
+  </a>
+  <a href="https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive">
+    <img alt="HauhauCS Aggressive IQ2_M on Hugging Face"
+         src="https://img.shields.io/badge/%F0%9F%A4%97%20Model-HauhauCS%20Aggressive%20IQ2__M-FFD21E?style=for-the-badge">
+  </a>
+</p>
+
 ```bash
 # the whole configuration, for the impatient
 TURBO_AUTO_ASYMMETRIC=0 GGML_SCHED_PREFETCH_EXPERTS=1 ./build/bin/llama-server \
@@ -20,6 +31,7 @@ TURBO_AUTO_ASYMMETRIC=0 GGML_SCHED_PREFETCH_EXPERTS=1 ./build/bin/llama-server \
 
 ## Contents
 
+- [Tested models](#tested-models)
 - [Results](#results)
 - [Test hardware](#test-hardware)
 - [Why this fork exists](#why-this-fork-exists)
@@ -36,10 +48,24 @@ TURBO_AUTO_ASYMMETRIC=0 GGML_SCHED_PREFETCH_EXPERTS=1 ./build/bin/llama-server \
 
 ---
 
+## Tested models
+
+Both are 2-bit-class quants of the same base model, chosen so the weights fit alongside an 85K
+KV cache on a 6 GB card — the point was a usable agentic context window, not a chat demo.
+
+| model | file | bpw | size | result |
+|---|---|---|---|---|
+| [pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf](https://huggingface.co/pjsmith/Qwen3.6-35B-A3B-2.6763bpw.gguf) | `Qwen3.6-35B-A3B-12Gb-2.6763bpw.gguf` | 2.6763 | 11.6 GB | 783 t/s prefill / 36.2 t/s decode @85K |
+| [HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive](https://huggingface.co/HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive) | `...-Aggressive-IQ2_M.gguf` | 2.69 | 11.7 GB | same speeds at the same depths |
+
+The two models measure identically here to within run-to-run noise. Everything below applies to
+both; the numbers quoted are from the pjsmith quant because it was measured first and most often.
+
 ## Results
 
-Model: **Qwen3.6-35B-A3B**, custom 2.6763 bpw GGUF (11.6 GB), architecture `qwen35moe`
-— 40 layers, 256 experts, top-8 routing, ~3B parameters active per token.
+Model: **Qwen3.6-35B-A3B**, 2.6763 bpw GGUF (11.6 GB), architecture `qwen35moe`
+— 40 layers, 256 experts, top-8 routing, ~3B parameters active per token. The HauhauCS
+`IQ2_M` quant measures the same; see [Tested models](#tested-models).
 Context: 85,000 tokens. Generation: 256 tokens. Same corpus and harness for every row.
 
 | build | bulk prefill @85K | decode @85K | note |
@@ -71,7 +97,7 @@ Measurement notes, because they matter:
 
 | | |
 |---|---|
-| GPU | NVIDIA RTX 4050 Laptop, 6,141 MiB, Ada (SM 8.9), 60 W power limit |
+| GPU | NVIDIA RTX 4050 Laptop, 6,141 MiB, Ada (SM 8.9), 75 W power limit |
 | Host link | PCIe 4.0 **x8** (measured ~13 GB/s effective for H2D) |
 | CPU | AMD Ryzen 7 7735HS, 8 cores / 16 threads |
 | RAM | 16 GB installed, 14 GiB visible to the OS (iGPU reserves the rest) |
@@ -272,9 +298,10 @@ so further gains have to come from kernels, not from more PCIe trickery.
 
 - **Single-GPU only.** The prefetch patch is designed for one device; multi-GPU pipeline
   parallelism uses a different code path and was not tested here.
-- **The model is not included.** The 2.6763 bpw GGUF is a custom quant; the configuration above
-  assumes a similar MoE with the same 40-layer / 256-expert shape. Other models need their own
-  `-ot` pattern and will have different expert sizes (and therefore different slot costs).
+- **The model is not included.** Download one of the [tested models](#tested-models); the
+  configuration above assumes the 40-layer / 256-expert `qwen35moe` shape. Other models need
+  their own `-ot` pattern and will have different expert sizes (and therefore different slot
+  costs).
 - **TurboQuant KV types are fork-specific.** `-ctk turbo5 -ctv turbo5` will not work on upstream
   llama.cpp; they come from the turboquant fork this is based on.
 - **`-ub 1024` faults** at head_dim 256 on this build. `-ub 768` is the tested maximum with
@@ -284,9 +311,8 @@ so further gains have to come from kernels, not from more PCIe trickery.
 
 ## Syncing with upstream
 
-This repository is an independent copy with full history, not a GitHub fork-network node
-(GitHub does not allow private forks of public repositories). Both remotes are kept, so upstream
-work is a normal merge:
+`upstream` points at [TheTom/llama-cpp-turboquant](https://github.com/TheTom/llama-cpp-turboquant),
+so upstream work is a normal merge:
 
 ```bash
 git remote -v          # origin = this repo, upstream = TheTom/llama-cpp-turboquant
@@ -294,15 +320,15 @@ git fetch upstream
 git merge upstream/feature/turboquant-kv-cache
 ```
 
-To restore a known-good state after an accidental update:
+To restore a known-good state after an accidental local update:
 
 ```bash
 git fetch origin
 git reset --hard origin/main
 ```
 
-The changes are also saved as a standalone patch in `patches/fork-prefill-fixes.patch`, which
-applies to upstream commit `643956891`:
+The four changes are also saved as a standalone patch in `patches/fork-prefill-fixes.patch`,
+which applies to upstream commit `643956891`:
 
 ```bash
 git checkout 643956891
