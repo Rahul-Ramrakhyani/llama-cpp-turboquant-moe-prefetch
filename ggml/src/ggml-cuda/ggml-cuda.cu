@@ -3912,6 +3912,52 @@ static bool ggml_cuda_is_view_or_noop(const ggml_tensor * t) {
 }
 
 #ifdef USE_CUDA_GRAPH
+// Mirrors ggml_cuda_mul_mat_id(): returns true only when the dispatch below would fall through
+// to the sorted-routing fallback, which synchronizes the stream and therefore forbids capture.
+// Keeping this in sync with the dispatch is what makes the prefill splits graph-capturable.
+static bool ggml_cuda_mul_mat_id_needs_sync(const ggml_tensor * dst, const int cc) {
+    const ggml_tensor * src0 = dst->src[0];
+    const ggml_tensor * src1 = dst->src[1];
+
+    if (src1->type != GGML_TYPE_F32 || dst->type != GGML_TYPE_F32) {
+        return true;
+    }
+
+    const bool is_tq_weight_id = (src0->type == GGML_TYPE_TQ4_1S || src0->type == GGML_TYPE_TQ3_1S);
+
+    if (dst->ne[2] <= MMVQ_MAX_BATCH_SIZE) {
+        if (is_tq_weight_id) {
+            if (ggml_is_contiguous(src1)) {
+                return false;
+            }
+        } else if (ggml_is_quantized(src0->type)) {
+            if (dst->ne[2] <= get_mmvq_mmid_max_batch(src0->type, cc)) {
+                return false;
+            }
+        } else if (GGML_CUDA_CC_IS_AMD(cc)) {
+            if (ggml_cuda_should_use_mmvf(src0->type, cc, src0->ne, src0->nb, src1->ne[2])) {
+                return false;
+            }
+        }
+    }
+
+    if (is_tq_weight_id && src0->type == GGML_TYPE_TQ4_1S &&
+            (amd_mfma_available(cc) || amd_wmma_available(cc) || GGML_CUDA_CC_IS_RDNA2(cc)) &&
+            ggml_is_contiguous(src1) && ggml_cuda_tq_mmq_supported(src0, cc)) {
+        return false;
+    }
+
+    if (ggml_cuda_should_use_mmq(src0->type, cc, src1->ne[2], /*n_experts=*/src0->ne[2])) {
+        return false;
+    }
+
+    if (ggml_cuda_should_use_mmf(src0->type, cc, WARP_SIZE, src0->ne, src0->nb, src1->ne[2], /*mul_mat_id=*/true)) {
+        return false;
+    }
+
+    return true;
+}
+
 static bool ggml_cuda_graph_check_compability(ggml_cgraph * cgraph) {
 
     bool use_cuda_graph = true;
@@ -3959,18 +4005,9 @@ static bool ggml_cuda_graph_check_compability(ggml_cgraph * cgraph) {
         }
 
         // [TAG_MUL_MAT_ID_CUDA_GRAPHS]
-        const bool is_tq_w = (node->src[0]->type == GGML_TYPE_TQ4_1S || node->src[0]->type == GGML_TYPE_TQ3_1S);
         if (node->op == GGML_OP_MUL_MAT_ID) {
             const int cc = ggml_cuda_info().devices[ggml_cuda_get_device()].cc;
-            const int mmvq_mmid_max = get_mmvq_mmid_max_batch(node->src[0]->type, cc);
-            // The mul_mat_id operation synchronizes the stream (forbidding graph capture) unless it
-            // takes a device-routed path. TQ weights now have a capture-safe device-routed matvec at
-            // small batch with contiguous src1 (ggml_cuda_mul_mat_id_tq); only the large-batch cuBLAS
-            // fallback still synchronizes. Other quantized weights use mmvq up to mmvq_mmid_max.
-            // Keep this condition in sync with the dispatch in ggml_cuda_mul_mat_id.
-            const bool needs_sync = is_tq_w
-                ? (node->ne[2] > MMVQ_MAX_BATCH_SIZE || !ggml_is_contiguous(node->src[1]))
-                : (!ggml_is_quantized(node->src[0]->type) || node->ne[2] > mmvq_mmid_max);
+            const bool needs_sync = ggml_cuda_mul_mat_id_needs_sync(node, cc);
             if (needs_sync) {
                 // TODO: figure out a way to enable for larger batch sizes, without hurting performance
                 // ref: https://github.com/ggml-org/llama.cpp/pull/18958
@@ -6523,9 +6560,11 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
             // the hot experts cached in VRAM. Admitted only for the TQ expert path, which
             // addresses experts through a table and so can be pointed at either place, and only
             // when explicitly opted in.
-            if (op->op == GGML_OP_MUL_MAT_ID && i == 0 &&
-                (src->type == GGML_TYPE_TQ3_1S || src->type == GGML_TYPE_TQ4_1S) &&
-                ggml_cuda_moe_host_experts_enabled()) {
+            // MoE expert stacks are the one weight class that is not really streamed per op:
+            // a token routes to a handful of experts out of hundreds. Admit them so the loader
+            // can place them in pinned host memory; the scheduler still decides per batch whether
+            // to copy them to VRAM (>= op_offload_min_batch) or compute on the CPU below it.
+            if (op->op == GGML_OP_MUL_MAT_ID && i == 0) {
                 continue;
             }
             return false;

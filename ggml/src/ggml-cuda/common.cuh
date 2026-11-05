@@ -1536,7 +1536,7 @@ struct ggml_backend_cuda_context {
 #ifdef USE_CUDA_GRAPH
     std::unordered_map<uint64_t, std::unique_ptr<ggml_cuda_graph>> cuda_graphs;
 
-    static const size_t max_cuda_graphs = 64;
+    static const size_t max_cuda_graphs = 512;
 
     int64_t last_graph_eviction_sweep = 0;
 
